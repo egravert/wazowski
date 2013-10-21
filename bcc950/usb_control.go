@@ -1,4 +1,4 @@
-package main
+package bcc950
 
 /*
 #include <libusb.h>
@@ -11,13 +11,17 @@ import (
 	"time"
 )
 
+// Camera represents the BC950 webcam.
+// It can be used to pan and zoom the camera.
 type Camera struct {
-	handle *[0]byte
+	handle   *[0]byte
+	OnTimeMs time.Duration // the duration to run the controlling motors (relevant for pan & tilt)
 }
 
 const (
 	logitech_vendid = 0x046d
 	bcc950_prodid   = 0x0837
+	defaultOnTimeMs = 20 * time.Millisecond
 )
 
 var (
@@ -33,6 +37,7 @@ func init() {
 	C.libusb_set_debug(nil, 3)
 }
 
+// NewCamera returns a Camera that can be used to control the BCC950 webcam.
 func NewCamera() (*Camera, error) {
 	handle := C.libusb_open_device_with_vid_pid(nil, logitech_vendid, bcc950_prodid)
 	if handle == nil {
@@ -41,37 +46,46 @@ func NewCamera() (*Camera, error) {
 
 	camera := &Camera{
 		handle,
+		defaultOnTimeMs,
 	}
 	return camera, nil
 }
 
-// rotates the camera clockwise for x milliseconds.
+// rotates the camera right(clockwise).
 // The camera rotation is relative and controlled by turnning on the motor
 // with a direction and stopping it after a period of time.
 func (camera *Camera) PanRight() {
 	camera.moveCamera(panRightCommand)
-	time.Sleep(20 * time.Millisecond)
-	camera.moveCamera(stopCommand)
 }
+
+// rotates the camera left(counter-clockwise).
+// The camera rotation is relative and controlled by turnning on the motor
+// with a direction and stopping it after a period of time.
 func (camera *Camera) PanLeft() {
 	camera.moveCamera(panLeftCommand)
-	time.Sleep(20 * time.Millisecond)
-	camera.moveCamera(stopCommand)
 }
 
+// Tilts the camera upward.
+// The camera rotation is relative and controlled by turnning on the motor
+// with a direction and stopping it after a period of time.
 func (camera *Camera) TiltUp() {
 	camera.moveCamera(tiltUpCommand)
-	time.Sleep(20 * time.Millisecond)
-	camera.moveCamera(stopCommand)
 }
 
+// Tilts the camera upward.
+// The camera rotation is relative and controlled by turnning on the motor
+// with a direction and stopping it after a period of time.
 func (camera *Camera) TiltDown() {
 	camera.moveCamera(tiltDownCommand)
-	time.Sleep(20 * time.Millisecond)
-	camera.moveCamera(stopCommand)
 }
 
 func (camera *Camera) moveCamera(command [4]C.uchar) {
+	camera.controlTransfer(command)
+	time.Sleep(camera.OnTimeMs)
+	camera.controlTransfer(stopCommand)
+}
+
+func (camera *Camera) controlTransfer(command [4]C.uchar) {
 	C.libusb_control_transfer(camera.handle,
 		0x21,
 		0x01,

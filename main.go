@@ -1,9 +1,11 @@
 package main
 
 import (
-	"github.com/gorilla/pat"
 	"io/ioutil"
 	"net/http"
+
+	"github.com/egravert/wazowski/bcc950"
+	"github.com/gorilla/pat"
 )
 
 var (
@@ -25,7 +27,7 @@ func (cmd command) Handle(w http.ResponseWriter, req *http.Request) {
 }
 
 func main() {
-	camera, err := NewCamera()
+	camera, err := bcc950.NewCamera()
 	if err != nil {
 		panic(err)
 	}
