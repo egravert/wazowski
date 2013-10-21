@@ -1,0 +1,32 @@
+<!DOCTYPE html>
+<html>
+  <head>
+	<title>Wazowksi!</title>
+	<script type='text/javascript' src='http://code.jquery.com/jquery-1.9.0.min.js'></script>
+	<script type="text/javascript">
+		  $(function() {
+			  $("body").keydown(function(e) {
+				switch(e.which)
+				{
+				  case 37:
+    				$.post("/panLeft");
+					break;
+				  case 38:
+    				$.post("/tiltUp");
+					break;
+				  case 39:
+    				$.post("/panRight");
+					break;
+				  case 40:
+    				$.post("/tiltDown");
+					break;
+				}
+			  });
+		  });
+	</script>
+
+  </head>
+  <body>
+
+  </body>
+</html>
