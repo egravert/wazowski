@@ -8,6 +8,8 @@ package bcc950
 import "C"
 import (
 	"errors"
+	"fmt"
+	"sync/atomic"
 	"time"
 )
 
@@ -15,6 +17,7 @@ import (
 // It can be used to pan and zoom the camera.
 type Camera struct {
 	handle   *[0]byte
+	moving   int32         // used to only allow one move command at a time to execute
 	OnTimeMs time.Duration // the duration to run the controlling motors (relevant for pan & tilt)
 }
 
@@ -46,6 +49,7 @@ func NewCamera() (*Camera, error) {
 
 	camera := &Camera{
 		handle,
+		0,
 		defaultOnTimeMs,
 	}
 	return camera, nil
@@ -80,9 +84,22 @@ func (camera *Camera) TiltDown() {
 }
 
 func (camera *Camera) moveCamera(command [4]C.uchar) {
-	camera.controlTransfer(command)
-	time.Sleep(camera.OnTimeMs)
-	camera.controlTransfer(stopCommand)
+	camera.whenNotMoving(func() {
+		camera.controlTransfer(command)
+		time.Sleep(camera.OnTimeMs)
+		camera.controlTransfer(stopCommand)
+	})
+}
+
+// to prevent flooding the camera with overlapping commands,
+// only allow one command to be processed at a time. If a command
+// comes in while moving, discard the move. (flooding will crash the video
+// and can cause the camera motor get locked in an on state)
+func (camera *Camera) whenNotMoving(move func()) {
+	if atomic.CompareAndSwapInt32(&camera.moving, 0, 1) {
+		move()
+		atomic.CompareAndSwapInt32(&camera.moving, 1, 0)
+	}
 }
 
 func (camera *Camera) controlTransfer(command [4]C.uchar) {
